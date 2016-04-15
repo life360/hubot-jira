@@ -96,73 +96,33 @@ module.exports = (robot) ->
                   json = JSON.parse(body)
                   key = json.key
 
+                  message = "[" + key + "] " + json.fields.summary
+                  message += '\nStatus: '+json.fields.status.name
+
+                  if (json.fields.assignee == null)
+                    message += ', unassigned'
+                  else if ('value' of json.fields.assignee or 'displayName' of json.fields.assignee)
+                    if (json.fields.assignee.name == "assignee" and json.fields.assignee.value.displayName)
+                      message += ', assigned to ' + json.fields.assignee.value.displayName
+                    else if (json.fields.assignee and json.fields.assignee.displayName)
+                      message += ', assigned to ' + json.fields.assignee.displayName
+                  else
+                    message += ', unassigned'
+                  message += ", rep. by "+json.fields.reporter.displayName
                   if json.fields.fixVersions and json.fields.fixVersions.length > 0
-                    fixVersion = json.fields.fixVersions[0].name
+                    message += ', fixVersion: '+json.fields.fixVersions[0].name
                   else
-                    fixVersion = 'fixVersion: NONE'
+                    message += ', fixVersion: NONE'
 
-                  if (json.fields.assignee.name == "assignee" and json.fields.assignee.value.displayName)
-                    assigned = json.fields.assignee.value.displayName
-                  else if (json.fields.assignee and json.fields.assignee.displayName)
-                    assigned = json.fields.assignee.displayName
-                  else
-                    assigned = 'Unassigned'
+                  if json.fields.priority and json.fields.priority.name
+                    message += ', priority: ' + json.fields.priority.name
 
-                  attachment =
-                    title: "[#{key}] #{json.fields.summary}"
-                    title_link: jiraUrl + "/browse/#{key}"
-                    fields: [
-                      {
-                        title: "Status"
-                        value: json.fields.status.name
-                        short: true
-                      },
-                      {
-                        title: "fixVersion"
-                        value: fixVersion
-                        short: true
-                      },
-                      {
-                        title: "Assigned to:"
-                        value: assigned
-                        short: true
-                      }
-                    ]
-                    color: "#003366"
-                    author_icon: "https://developer.atlassian.com/imgs/jira.png"
+                  urlRegex = new RegExp(jiraUrl + "[^\\s]*" + key)
+                  if not msg.message.text.match(urlRegex)
+                    message += "\n" + jiraUrl + "/browse/" + key
 
-                  msg.robot.adapter.customMessage
-                    channel: msg.envelope.room
-                    username: msg.robot.name
-                    attachments: [attachment]
-
-                  # message = "[" + key + "] " + json.fields.summary
-                  # message += '\nStatus: '+json.fields.status.name
-                  #
-                  # if (json.fields.assignee == null)
-                  #   message += ', unassigned'
-                  # else if ('value' of json.fields.assignee or 'displayName' of json.fields.assignee)
-                  #   if (json.fields.assignee.name == "assignee" and json.fields.assignee.value.displayName)
-                  #     message += ', assigned to ' + json.fields.assignee.value.displayName
-                  #   else if (json.fields.assignee and json.fields.assignee.displayName)
-                  #     message += ', assigned to ' + json.fields.assignee.displayName
-                  # else
-                  #   message += ', unassigned'
-                  # message += ", rep. by "+json.fields.reporter.displayName
-                  # if json.fields.fixVersions and json.fields.fixVersions.length > 0
-                  #   message += ', fixVersion: '+json.fields.fixVersions[0].name
-                  # else
-                  #   message += ', fixVersion: NONE'
-                  #
-                  # if json.fields.priority and json.fields.priority.name
-                  #   message += ', priority: ' + json.fields.priority.name
-                  #
-                  # urlRegex = new RegExp(jiraUrl + "[^\\s]*" + key)
-                  # if not msg.message.text.match(urlRegex)
-                  #   message += "\n" + jiraUrl + "/browse/" + key
-                  #
-                  # msg.send message
-                  # cache.push({issue: issue, expires: now + 120000, message: message})
+                  msg.send message
+                  cache.push({issue: issue, expires: now + 120000, message: message})
                 catch error
                   try
                     msg.send "[*ERROR*] " + json.errorMessages[0]
